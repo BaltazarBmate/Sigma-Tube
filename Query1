@@ -1,0 +1,715 @@
+SELECT GETDATE() AS CurrentTime;
+
+SELECT name FROM sys.databases;
+
+CREATE DATABASE SigmaTB;
+
+--Use the DB
+USE SigmaTB;
+
+-- create ROP data table
+CREATE TABLE ROPData (
+    [Unnamed: 0] VARCHAR(34),
+    [Unnamed: 1] VARCHAR(6),
+    [Unnamed: 2] VARCHAR(8),
+    [Unnamed: 3] VARCHAR(8),
+    [Unnamed: 4] VARCHAR(8),
+    [Unnamed: 5] VARCHAR(13),
+    [Unnamed: 6] VARCHAR(8),
+    [Unnamed: 7] VARCHAR(7),
+    [Unnamed: 8] VARCHAR(7),
+    [Unnamed: 9] VARCHAR(8),
+    [Unnamed: 10] VARCHAR(8),
+    [Unnamed: 11] VARCHAR(16),
+    [Unnamed: 12] VARCHAR(8),
+    [Unnamed: 13] VARCHAR(9),
+    [Unnamed: 14] VARCHAR(9),
+    [Unnamed: 15] VARCHAR(9),
+    [Unnamed: 16] VARCHAR(7),
+    [Unnamed: 17] VARCHAR(7),
+    [Unnamed: 18] VARCHAR(9),
+    [Unnamed: 19] VARCHAR(9),
+    [Unnamed: 20] VARCHAR(9),
+    [Unnamed: 21] DECIMAL(18,2),
+    [Unnamed: 22] DECIMAL(18,2),
+    [Unnamed: 23] VARCHAR(7),
+    [Unnamed: 24] DECIMAL(18,2),
+    [Unnamed: 25] DECIMAL(18,2),
+    [Unnamed: 26] DECIMAL(18,2),
+    [Unnamed: 27] DECIMAL(18,2),
+    [Unnamed: 28] DECIMAL(18,2)
+);
+
+--Create BasePrice table
+CREATE TABLE BasePrice (
+    [IOITEM] INT,
+    [IOBPRC] DECIMAL(18,2)
+);
+
+--Create SalesData table
+CREATE TABLE SalesData (
+    [OORECD] VARCHAR(6),
+    [ODTYPE] VARCHAR(6),
+    [ODITEM] VARCHAR(6),
+    [OOCUST] VARCHAR(6),
+    [ODTLBS] VARCHAR(8),
+    [ ODTFTS ] VARCHAR(11),
+    [ ODORDR ] VARCHAR(6),
+    [ CALPHA ] VARCHAR(26),
+    [ 00009 ] INT,
+    [Unnamed: 9] INT,
+    [Unnamed: 10] VARCHAR(11),
+    [Unnamed: 11] DECIMAL(18,2),
+    [ 22,121.244 ] DECIMAL(18,2)
+);
+
+--Create UsageData table
+CREATE TABLE UsageData (
+    [Unnamed: 0] VARCHAR(6),
+    [Unnamed: 1] VARCHAR(6),
+    [Unnamed: 2] VARCHAR(6),
+    [Unnamed: 3] VARCHAR(8),
+    [Unnamed: 4] VARCHAR(8),
+    [ Start Date ] VARCHAR(9),
+    [Unnamed: 6] VARCHAR(8),
+    [Unnamed: 7] VARCHAR(8),
+    [Unnamed: 8] VARCHAR(8),
+    [Unnamed: 9] VARCHAR(8),
+    [2024 02 29] VARCHAR(31),
+    [ item_XxDocmntVendrCstmrDatedate ] VARCHAR(10),
+    [Unnamed: 12] VARCHAR(7),
+    [Unnamed: 13] DECIMAL(18,2),
+    [Unnamed: 14] VARCHAR(6),
+    [Unnamed: 15] VARCHAR(3),
+    [Unnamed: 16] DECIMAL(18,2),
+    [Unnamed: 17] DECIMAL(18,2),
+    [Unnamed: 18] VARCHAR(6),
+    [Unnamed: 19] DECIMAL(18,2),
+    [Unnamed: 20] DECIMAL(18,2),
+    [Unnamed: 21] DECIMAL(18,2),
+    [Unnamed: 22] VARCHAR(6),
+    [Unnamed: 23] VARCHAR(6),
+    [Unnamed: 24] VARCHAR(8),
+    [Unnamed: 25] VARCHAR(29),
+    [Unnamed: 26] DECIMAL(18,2)
+);
+
+--Create TagData
+CREATE TABLE TagData (
+    [Item] VARCHAR(6),
+    [Tag] VARCHAR(7),
+    [Description] VARCHAR(20),
+    [Pc Len] VARCHAR(6),
+    [Pcs] VARCHAR(6),
+    [ Length ] VARCHAR(9),
+    [ Heat ] VARCHAR(8),
+    [ Lot ] VARCHAR(8),
+    [ Loc ] VARCHAR(8),
+    [ OnHand ] VARCHAR(9),
+    [ Reserved ] VARCHAR(9),
+    [ Avail ] VARCHAR(9),
+    [Unnamed: 12] VARCHAR(28),
+    [ remnants ] VARCHAR(6),
+    [Unnamed: 14] DECIMAL(18,2),
+    [Unnamed: 15] VARCHAR(7),
+    [Unnamed: 16] DECIMAL(18,2)
+);
+
+-- Create POData
+CREATE TABLE POData (
+    [ PO ] VARCHAR(8),
+    [ V# ] VARCHAR(8),
+    [Vendor] VARCHAR(8),
+    [Code] VARCHAR(6),
+    [Item] VARCHAR(6),
+    [Description] VARCHAR(24),
+    [Original] VARCHAR(10),
+    [Due Date] VARCHAR(10),
+    [Received] VARCHAR(10),
+    [ Ordered ] VARCHAR(8),
+    [ Received ] VARCHAR(8),
+    [UOM] VARCHAR(6),
+    [ Due ] VARCHAR(8),
+    [Unnamed: 13] DECIMAL(18,2),
+    [Unnamed: 14] VARCHAR(8),
+    [Unnamed: 15] VARCHAR(7),
+    [Unnamed: 16] VARCHAR(20),
+    [Unnamed: 17] VARCHAR(6),
+    [Unnamed: 18] VARCHAR(6),
+    [Unnamed: 19] VARCHAR(32),
+    [Unnamed: 20] VARCHAR(10),
+    [Unnamed: 21] VARCHAR(10),
+    [Unnamed: 22] VARCHAR(10),
+    [Unnamed: 23] VARCHAR(8),
+    [Unnamed: 24] VARCHAR(9),
+    [Unnamed: 25] VARCHAR(6),
+    [Unnamed: 26] VARCHAR(8)
+);
+
+--Verify that the tables were created
+Select TABLE_NAME from INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';
+
+--check permissions
+SELECT SUSER_NAME();
+
+
+--Enable FileAccess for SQL server
+EXEC sp_configure 'show advanced options', 1;
+RECONFIGURE;
+EXEC sp_configure 'Ad Hoc Distributed Queries', 1;
+RECONFIGURE;
+
+--Get the CSV files into the S3 repository into the RDC environment.. crazy complexity
+EXEC msdb.dbo.rds_download_from_s3
+    'arn:aws:s3:::esmbucket2/ROPData.csv',  -- S3 file ARN
+    'D:\S3\ROPData.csv',  -- Target path in RDS
+    1;  -- Overwrite if file exists
+
+--Verify if file was imported
+EXEC msdb.dbo.rds_file_list;
+
+--Edition doesnt allow
+SELECT SERVERPROPERTY('Edition'), SERVERPROPERTY('EngineEdition');
+
+
+--Verify the import
+SELECT * FROM ROPData;
+
+
+BULK INSERT BasePrice FROM '/Users/bmate/Downloads/BasePrice.csv'
+
+
+-- Now, import the data
+BULK INSERT BasePrice FROM 'C:\Administrator\Downloads\BasePrice.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n', TABLOCK);
+
+BULK INSERT ROPData FROM 'C:\Administrator\Downloads\ROPData.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n', TABLOCK);
+
+BULK INSERT SalesData FROM 'C:\Administrator\Downloads\SalesData.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n', TABLOCK);
+
+BULK INSERT UsageData FROM 'C:\Administrator\Downloads\UsageData.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n', TABLOCK);
+
+BULK INSERT TagData FROM 'C:\Administrator\Downloads\TagData.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n', TABLOCK);
+
+BULK INSERT POData FROM 'C:\Administrator\Downloads\POData.csv'
+WITH (FORMAT = 'CSV', FIRSTROW = 2, FIELDTERMINATOR = ',', ROWTERMINATOR = '\n', TABLOCK);
+
+
+--Delete all tables and start again
+DECLARE @sql NVARCHAR(MAX) = N'';
+
+-- Generate DROP TABLE commands for all user tables
+SELECT @sql += 'DROP TABLE IF EXISTS ' + QUOTENAME(TABLE_SCHEMA) + '.' + QUOTENAME(TABLE_NAME) + '; ' + CHAR(13)
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_TYPE = 'BASE TABLE';
+
+-- Execute the generated SQL
+EXEC sp_executesql @sql;
+
+-- end deleting tables
+
+
+
+-- Generate a COUNT(*) query for each table
+    DECLARE @sql NVARCHAR(MAX) = N'';   
+
+    -- Generate a COUNT(*) query for each table
+    SELECT @sql += 'SELECT ''' + TABLE_SCHEMA + '.' + TABLE_NAME + ''' AS TableName, COUNT(*) AS RecordCount FROM ' + QUOTENAME(TABLE_SCHEMA) + '.' + QUOTENAME(TABLE_NAME) + ' UNION ALL '
+    FROM INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_TYPE = 'BASE TABLE';
+
+    -- Remove the last "UNION ALL"
+    SET @sql = LEFT(@sql, LEN(@sql) - 10);
+
+    -- Execute the generated SQL
+    EXEC sp_executesql @sql;
+
+
+select * from ROPData
+select count(*) from ropdata
+select unique
+
+select count(*) from ropdata where Vndr NOT LIKE 'N%';
+SELECT * FROM ROPData WHERE Vndr NOT LIKE 'N%' AND OD like '14';
+SELECT * FROM ROPData WHERE Vndr NOT LIKE 'N%' AND Vndr like 'HAL';
+
+
+SELECT Item, Description,[con/wk] FROM ROPDATA WHERE Item = '51503';
+
+SELECT * FROM SalesData WHERE CALPHA LIKE 'AERO%';
+sELECT COUNT(*) FROM ROPData;
+
+--let me try to get the MP processing
+SELECT * from UsageData where IHITEM = 50002;
+SELECT [IHITEM], [IHTRNT],[IHTQTY], [Column2]   from UsageData where IHITEM = 50002;
+
+select '50002IN950654000000075320240503'
+
+SELECT 
+    CASE 
+        WHEN CHARINDEX('202405', [Column2]) > 0 THEN 'Yes'
+        ELSE 'No'
+    END AS ContainsText
+FROM UsageData;
+
+
+SELECT [IHITEM], [IHTRNT],[IHTQTY], [Column2] 
+FROM UsageData
+WHERE CHARINDEX('202405', [Column2]) > 0;
+
+
+--///////////////////////////////////////////
+--Get cost of material processing on 1 item
+SELECT 
+    SUM(IHTQTY) AS TotalQuantity
+FROM 
+    UsageData
+WHERE 
+    [Column2] LIKE '50002MP________________202409__';
+--///////////////////////////////////////////
+--///////////////////////////////////////////
+--///////////////////////////////////////////
+
+
+
+SELECT 
+    SUM(IHTQTY) AS total_quantity
+FROM 
+    UsageData
+WHERE 
+    IHITEM = 50002
+    AND CAST(IHTRNT AS VARCHAR(MAX)) = 'MP'
+    AND IHTRN# = 402074
+    AND IHVNDR = 121
+    AND LEFT(CAST(Column1 AS VARCHAR(20)), 6) = '202409';
+
+
+SELECT 
+    IHITEM, IHTRNT, IHTRN#, IHVNDR, Column1, IHTQTY
+FROM 
+    UsageData
+WHERE 
+    IHITEM = 50002
+    AND CAST(IHTRNT AS VARCHAR(MAX)) = 'MP'
+    AND IHTRN# = 402074
+    AND IHVNDR = 121
+    AND LEFT(CAST(Column1 AS VARCHAR(20)), 6) = '202409';
+
+
+SELECT * FROM UsageData WHERE IHITEM = '50002';
+SELECT DISTINCT IHTRNT FROM UsageData;
+SELECT DISTINCT IHTRN# FROM UsageData WHERE IHITEM = 50002;
+
+SELECT DISTINCT Column1 FROM UsageData WHERE IHITEM = 50002;
+
+
+SELECT TOP 10 IHTRNT 
+FROM UsageData 
+WHERE CAST(IHTRNT AS VARCHAR(MAX)) LIKE '%MP%';
+
+
+
+
+SELECT 
+    IHITEM, IHTRNT, IHTRN#, IHVNDR, IHCUST Column1, IHTQTY
+FROM 
+    UsageData
+WHERE 
+    CAST(IHTRNT AS VARCHAR(10)) = 'CR';
+
+SELECT 
+    *
+FROM 
+    UsageData
+WHERE 
+    CAST(IHTRNT AS VARCHAR(10)) = 'CR';
+
+SELECT 
+    u.*, 
+    u2.CALPHA AS CustomerName
+FROM 
+    UsageData u
+LEFT JOIN 
+    UsageData2 u2 ON u.IHCUST = u2.IHCUST
+WHERE 
+    CAST(u.IHTRNT AS VARCHAR(10)) = 'CR';
+
+
+--where is the customer name?
+DECLARE @sql NVARCHAR(MAX) = '';
+
+SELECT @sql += 
+    'SELECT TOP 1 * FROM ' + 
+    QUOTENAME(TABLE_SCHEMA) + '.' + QUOTENAME(TABLE_NAME) + ';' + CHAR(13)
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_TYPE = 'BASE TABLE';
+
+PRINT @sql;  -- OR SELECT @sql AS SQLText;
+
+SELECT TOP 1 * from [dbo].[BasePrice];
+SELECT TOP 1 * from [dbo].[POData];
+SELECT TOP 1 * from [dbo].[POIssued];
+SELECT TOP 1 * from [dbo].[ROPData]
+SELECT TOP 1 * from [dbo].[SalesData];      -- customer
+SELECT TOP 1 * from [dbo].[TagData];        -- availability
+SELECT TOP 1 * from [dbo].[UsageData];
+SELECT TOP 1 * from [dbo].[UsageData2];     -- customer 
+
+--How many transactions are by transaction types?
+    
+SELECT 
+    CAST(IHTRNT AS VARCHAR(10)) AS TransactionType,
+    FORMAT(COUNT(*), 'N0') AS TransactionCount,
+    FORMAT(SUM(IHTQTY), 'N2') AS TotalQuantity
+FROM 
+    UsageData
+WHERE 
+    CAST(IHTRNT AS VARCHAR(10)) IN ('CR', 'IA', 'IN', 'OW', 'OR')
+GROUP BY 
+    CAST(IHTRNT AS VARCHAR(10))
+ORDER BY 
+    TransactionType;
+
+-- cool
+-- so, lets gonna get the column names with description, and then identifying the customer who did the credit memos
+
+WITH OneCustomerNamePerID AS (
+    SELECT 
+        IHCUST, 
+        MIN(CONVERT(VARCHAR(MAX), CALPHA)) AS CALPHA
+    FROM UsageData2
+    GROUP BY IHCUST
+)
+SELECT 
+    u.IHITEM AS [IHITEM (item ID)],
+    u.IHCUST AS [IHCUST (customer ID)],
+    c.CALPHA AS [CustomerName],
+    u.IHTRN# AS [IHTRN# (transaction number)],
+    u.IHTQTY AS [IHTQTY (quantity)],
+    CONVERT(VARCHAR(MAX), u.Column3) AS [Column3 (quantity copy?)],
+    CONVERT(VARCHAR(10), u.IHTRNT) AS [IHTRNT (transaction type)],
+    CONVERT(VARCHAR(MAX), u.Column1) AS [Column1 (internal ref)],
+    u.IHVNDR AS [IHVNDR (vendor)],
+    u.IHTRYY AS [IHTRYY (year)],
+    u.IHTRMM AS [IHTRMM (month)],
+    u.IHTRDD AS [IHTRDD (day)],
+    CONVERT(VARCHAR(MAX), u.Column2) AS [Column2 (composite key)],
+    CONVERT(VARCHAR(MAX), u.Column4) AS [Column4 (status flag)]
+FROM 
+    UsageData u
+LEFT JOIN 
+    OneCustomerNamePerID c ON u.IHCUST = c.IHCUST
+WHERE 
+    CONVERT(VARCHAR(10), u.IHTRNT) = 'IA';
+
+-- Now we query for more than 1 transaction category 
+WITH OneCustomerNamePerID AS (
+    SELECT 
+        IHCUST, 
+        MIN(CONVERT(VARCHAR(MAX), CALPHA)) AS CALPHA
+    FROM UsageData2
+    GROUP BY IHCUST
+)
+SELECT 
+    u.IHITEM AS [IHITEM (item ID)],
+    u.IHCUST AS [IHCUST (customer ID)],
+    c.CALPHA AS [CustomerName],
+    u.IHTRN# AS [IHTRN# (transaction number)],
+    u.IHTQTY AS [IHTQTY (quantity)],
+    CONVERT(VARCHAR(MAX), u.Column3) AS [Column3 (quantity copy?)],
+    CONVERT(VARCHAR(10), u.IHTRNT) AS [IHTRNT (transaction type)],
+    CONVERT(VARCHAR(MAX), u.Column1) AS [Column1 (internal ref)],
+    u.IHVNDR AS [IHVNDR (vendor ID)],
+    p.Vendor AS [VendorName],  -- 🎯 pulled from POData
+    u.IHTRYY AS [IHTRYY (year)],
+    u.IHTRMM AS [IHTRMM (month)],
+    u.IHTRDD AS [IHTRDD (day)],
+    CONVERT(VARCHAR(MAX), u.Column2) AS [Column2 (composite key)],
+    CONVERT(VARCHAR(MAX), u.Column4) AS [Column4 (status flag)]
+FROM 
+    UsageData u
+LEFT JOIN 
+    OneCustomerNamePerID c ON u.IHCUST = c.IHCUST
+LEFT JOIN 
+    POData p ON u.IHVNDR = p.[V#]
+WHERE 
+    CONVERT(VARCHAR(10), u.IHTRNT) IN ('OR', 'OW');
+
+
+-- PURCHASE ORDERS 
+WITH OneCustomerNamePerID AS (
+    SELECT 
+        IHCUST, 
+        MIN(CONVERT(VARCHAR(MAX), CALPHA)) AS CALPHA
+    FROM UsageData2
+    GROUP BY IHCUST
+)
+SELECT 
+    u.IHITEM AS [IHITEM (item ID)],
+    u.IHCUST AS [IHCUST (customer ID)],
+    c.CALPHA AS [CustomerName],
+    u.IHTRN# AS [IHTRN# (transaction number)],
+    u.IHTQTY AS [IHTQTY (quantity)],
+    CONVERT(VARCHAR(MAX), u.Column3) AS [Column3 (quantity copy?)],
+    CONVERT(VARCHAR(10), u.IHTRNT) AS [IHTRNT (transaction type)],
+    CONVERT(VARCHAR(MAX), u.Column1) AS [Column1 (internal ref)],
+    u.IHVNDR AS [IHVNDR (vendor ID)],
+    p.Vendor AS [VendorName],  -- 🎯 pulled from POData
+    u.IHTRYY AS [IHTRYY (year)],
+    u.IHTRMM AS [IHTRMM (month)],
+    u.IHTRDD AS [IHTRDD (day)],
+    CONVERT(VARCHAR(MAX), u.Column2) AS [Column2 (composite key)],
+    CONVERT(VARCHAR(MAX), u.Column4) AS [Column4 (status flag)]
+FROM 
+    UsageData u
+LEFT JOIN 
+    OneCustomerNamePerID c ON u.IHCUST = c.IHCUST
+LEFT JOIN 
+    POData p ON u.IHVNDR = p.[V#]
+WHERE 
+    CONVERT(VARCHAR(10), u.IHTRNT) IN ('PO');
+
+
+select * from ROPData where CONVERT(varchar(mAX), [Item]) = '50002';
+SELECT count(*) from ropdata;
+
+select * from usagedata 
+where IHITEM = 50002
+AND IHTRYY = 24
+AND IHTRMM = 09
+AND CONVERT(VARCHAR(MAX), IHTRNT) IN ('OW', 'OR');
+
+--Select MP from Usage Data for a particular Month
+select SUM(IHTQTY) from usagedata 
+where IHITEM = 50002
+AND IHTRYY = 24
+AND IHTRMM = 09
+AND CONVERT(VARCHAR(MAX), IHTRNT) IN ('OW', 'OR');
+
+--Now lets gonna try by 12 months
+SELECT 
+    FORMAT(DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1), 'yyyy-MM') AS [Month],
+    SUM(IHTQTY) AS [TotalMaterialProcessed]
+FROM 
+    UsageData
+WHERE 
+    CONVERT(VARCHAR(10), IHTRNT) IN ('OW', 'OR')
+    AND DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1) >= DATEADD(MONTH, -13, CAST(GETDATE() AS DATE))  -- last 12 months including current
+GROUP BY 
+    FORMAT(DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1), 'yyyy-MM')
+ORDER BY 
+    [Month];
+
+
+SELECT 
+    FORMAT(DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1), 'yyyy-MM') AS [Month],
+    SUM(IHTQTY) AS [TotalMaterialProcessed]
+FROM 
+    UsageData
+WHERE 
+    IHITEM = 50002  -- ✅ Filter to specific item
+    AND CONVERT(VARCHAR(10), IHTRNT) IN ('OW', 'OR')
+    AND DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1) >= DATEADD(MONTH, -13, CAST(GETDATE() AS DATE))
+GROUP BY 
+    FORMAT(DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1), 'yyyy-MM')
+ORDER BY 
+    [Month];
+
+--///////////////////////////////////////////////////////////////////
+--HERE IS IT... THE TABLE THAT RETURNS MP BY MONTH BY ITEM
+
+-- Step 1: Generate last 13 months
+WITH Last13Months AS (
+    SELECT FORMAT(DATEADD(MONTH, -n, CAST(GETDATE() AS DATE)), 'yyyy-MM') AS [Month]
+    FROM (SELECT TOP 13 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n FROM sys.all_objects) AS x
+),
+-- Step 2: Aggregate your material processing data
+MonthlyProcessing AS (
+    SELECT 
+        FORMAT(DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1), 'yyyy-MM') AS [Month],
+        SUM(IHTQTY) AS TotalMaterialProcessed
+    FROM UsageData
+    WHERE 
+        IHITEM = 50002
+        AND CONVERT(VARCHAR(10), IHTRNT) IN ('OW', 'OR')
+        AND DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1) >= DATEADD(MONTH, -13, CAST(GETDATE() AS DATE))
+    GROUP BY 
+        FORMAT(DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1), 'yyyy-MM')
+)
+-- Step 3: Join and return all months
+SELECT 
+    l.[Month],
+    FORMAT(ISNULL(m.TotalMaterialProcessed, 0), 'N3') AS [TotalMaterialProcessed]
+FROM 
+    Last13Months l
+LEFT JOIN 
+    MonthlyProcessing m ON l.Month = m.Month
+ORDER BY 
+    l.Month;
+--///////////////////////////////////////////////////////////////////
+--///////////////////////////////////////////////////////////////////
+
+
+--NOW, LETS GONNA HAVE THE TABLE WITH IA, MP, SO
+WITH Months AS (
+    SELECT FORMAT(DATEADD(MONTH, -n, CAST(GETDATE() AS DATE)), 'yyyy-MM') AS Month
+    FROM (SELECT TOP 13 ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1 AS n FROM master.dbo.spt_values) AS x
+),
+Aggregated AS (
+    SELECT
+        FORMAT(DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1), 'yyyy-MM') AS Month,
+        CASE 
+            WHEN CONVERT(VARCHAR(10), IHTRNT) = 'IA' THEN IHTQTY
+            WHEN CONVERT(VARCHAR(10), IHTRNT) IN ('OW', 'OR') THEN IHTQTY
+            WHEN CONVERT(VARCHAR(10), IHTRNT) = 'IN' THEN IHTQTY
+            ELSE 0
+        END AS Qty,
+        CONVERT(VARCHAR(10), IHTRNT) AS Type
+    FROM UsageData
+    WHERE IHITEM = 50002
+      AND DATEFROMPARTS(2000 + IHTRYY, IHTRMM, 1) >= DATEADD(MONTH, -13, CAST(GETDATE() AS DATE))
+)
+SELECT 
+    m.Month,
+    FORMAT(SUM(CASE WHEN a.Type = 'IA' THEN a.Qty ELSE 0 END), 'N2') AS [IA (Inventory Adjustments)],
+    FORMAT(SUM(CASE WHEN a.Type IN ('OW', 'OR') THEN a.Qty ELSE 0 END), 'N2') AS [MP (Material Processed)],
+    FORMAT(SUM(CASE WHEN a.Type = 'IN' THEN a.Qty ELSE 0 END), 'N2') AS [SO (Sales Orders)]
+FROM Months m
+LEFT JOIN Aggregated a ON m.Month = a.Month
+GROUP BY m.Month
+ORDER BY m.Month;
+
+--////////////////////////////////////////////////////////////
+--////////////////////////////////////////////////////////////
+
+--//////////////////////////////////////////////////////////
+--////////////////////////////////////////////////////////////
+-- Lets gonna describe items
+
+selecT * FROM ROPdata where ITEM
+
+-- they get items from ROPQuery
+SELECT ITEMMAST.IMFSP2, ITEMMAST.IMITEM, ITEMMAST.IMSIZ1, 
+      ITEMMAST.IMSIZ2, ITEMMAST.IMSIZ3, ITEMMAST.IMDSC2, ITEMMAST.IMWPFT, 
+        ITEMONHD.IOACST, ITEMONHD.IOQOH, ITEMONHD.IOQOO, 
+        IOQOR+IOQOOR, 
+        ITEMMAST.IMDSC1, ITEMMAST.IMWUOM, ITEMMAST.IMCSMO
+FROM S219EAAV.MW4FILE.ITEMMAST ITEMMAST, 
+    S219EAAV.MW4FILE.ITEMONHD ITEMONHD
+WHERE ITEMONHD.IOITEM = ITEMMAST.IMITEM AND ((ITEMMAST.IMRECD='A') AND (ITEMMAST.IMITEM Between '49999' And '90000'))
+ORDER BY ITEMMAST.IMFSP2
+
+
+--GET THE NAME AND DATATYPE OF FIELDS - INFORMATION SCHEMA
+SELECT 
+    COLUMN_NAME, 
+    DATA_TYPE, 
+    CHARACTER_MAXIMUM_LENGTH,
+    IS_NULLABLE
+FROM 
+    INFORMATION_SCHEMA.COLUMNS
+WHERE 
+    TABLE_NAME = 'ROPData'  -- Replace with your actual table name
+    AND TABLE_SCHEMA = 'dbo';
+
+
+--////////////////////////////////////////////////////////
+--GET THE NAME AND DATATYPE FROM SYS.COLUMNS
+SELECT 
+    c.name AS ColumnName,
+    t.name AS DataType,
+    c.max_length AS MaxLength,
+    c.precision,
+    c.scale,
+    CASE 
+        WHEN c.is_nullable = 1 THEN 'YES'
+        ELSE 'NO'
+    END AS IsNullable
+FROM 
+    sys.columns c
+JOIN 
+    sys.types t ON c.user_type_id = t.user_type_id
+WHERE 
+    c.object_id = OBJECT_ID('dbo.ROPData');  -- Replace with your table name
+
+--///////////////////////////////////////////////////////
+
+
+
+--since i cannot convert, then i add
+
+ALTER TABLE ROPData
+ADD 
+    Item_int INT NULL,
+    OD_num NUMERIC(10, 2) NULL,
+    ID_num NUMERIC(10, 2) NULL,
+    Wall_num NUMERIC(10, 2) NULL,
+    OnHand_num NUMERIC(10, 2) NULL,
+    Rsrv_num NUMERIC(10, 2) NULL,
+    FtPerUnit_num NUMERIC(10, 2) NULL,     -- "#/ft"
+    PricePerFt_num NUMERIC(10, 2) NULL,   -- "$/ft"
+    Index_num NUMERIC(10, 2) NULL,
+    Level_num NUMERIC(10, 2) NULL,
+    ConPerWk_num NUMERIC(10, 2) NULL,     -- "con/wk"
+    TotCons_num NUMERIC(10, 2) NULL,
+    Time_num NUMERIC(10, 2) NULL;
+
+--i copy the values
+-- Safely copy values to new typed columns
+UPDATE ROPData
+SET
+    Item_int = TRY_CAST(CAST(Item AS VARCHAR(MAX)) AS INT),
+    OD_num = TRY_CAST(CAST(OD AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    ID_num = TRY_CAST(CAST(ID AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    Wall_num = TRY_CAST(CAST(Wall AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    OnHand_num = TRY_CAST(CAST([OnHand] AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    Rsrv_num = TRY_CAST(CAST(Rsrv AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    FtPerUnit_num = TRY_CAST(CAST([#/ft] AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    PricePerFt_num = TRY_CAST(CAST([$/ft] AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    Index_num = TRY_CAST(CAST([Index] AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    Level_num = TRY_CAST(CAST([Level] AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    ConPerWk_num = TRY_CAST(CAST([con/wk] AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    TotCons_num = TRY_CAST(CAST([TotCons] AS VARCHAR(MAX)) AS NUMERIC(10,2)),
+    Time_num = TRY_CAST(CAST([Time] AS VARCHAR(MAX)) AS NUMERIC(10,2));
+
+-- now we delete the old text columns
+ALTER TABLE ROPData
+DROP COLUMN 
+    Item,
+    OD,
+    ID,
+    Wall,
+    OnHand,
+    Rsrv,
+    [#/ft],
+    [$/ft],
+    [Index],
+    [Level],
+    [con/wk],
+    TotCons,
+    [Time];
+
+--and then we rename the new columns to the original names
+EXEC sp_rename 'ROPData.Item_int', 'Item', 'COLUMN';
+EXEC sp_rename 'ROPData.OD_num', 'OD', 'COLUMN';
+EXEC sp_rename 'ROPData.ID_num', 'ID', 'COLUMN';
+EXEC sp_rename 'ROPData.Wall_num', 'Wall', 'COLUMN';
+EXEC sp_rename 'ROPData.OnHand_num', 'OnHand', 'COLUMN';
+EXEC sp_rename 'ROPData.Rsrv_num', 'Rsrv', 'COLUMN';
+EXEC sp_rename 'ROPData.FtPerUnit_num', '#/ft', 'COLUMN';
+EXEC sp_rename 'ROPData.PricePerFt_num', '$/ft', 'COLUMN';
+EXEC sp_rename 'ROPData.Index_num', 'Index', 'COLUMN';
+EXEC sp_rename 'ROPData.Level_num', 'Level', 'COLUMN';
+EXEC sp_rename 'ROPData.ConPerWk_num', 'con/wk', 'COLUMN';
+EXEC sp_rename 'ROPData.TotCons_num', 'TotCons', 'COLUMN';
+EXEC sp_rename 'ROPData.Time_num', 'Time', 'COLUMN';
+
+
+--GET THE ITEM THAT CHRIS IS REVIEWING
+select [Size Text], Description, SMO
+from ROPData
+WHERE item = 50002;

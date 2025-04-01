@@ -1,0 +1,24 @@
+ 
+USE SigmaTB;
+
+--add
+ALTER TABLE BasePrice
+ADD IOITEM_int INT NULL,
+    IOBPRC_num NUMERIC(10, 2) NULL;
+
+
+--copy
+UPDATE BasePrice
+SET IOITEM_int = TRY_CAST(CAST(IOITEM AS VARCHAR) AS INT),
+    IOBPRC_num = TRY_CAST(CAST(IOBPRC AS VARCHAR) AS NUMERIC(10, 2));
+
+--drop
+ALTER TABLE BasePrice
+DROP COLUMN IOITEM;
+
+ALTER TABLE BasePrice
+DROP COLUMN IOBPRC;
+
+-- rename
+EXEC sp_rename 'BasePrice.IOITEM_int', 'IOITEM', 'COLUMN';
+EXEC sp_rename 'BasePrice.IOBPRC_num', 'IOBPRC', 'COLUMN';
