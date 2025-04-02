@@ -4,4 +4,4 @@ sqlalchemy
 altair
 pymssql
 matplotlib
-pymssql
+seaborn
