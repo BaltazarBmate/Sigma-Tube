@@ -1,6 +1,0 @@
-streamlit
-pandas
-sqlalchemy
-altair
-pytds
-matplotlib
