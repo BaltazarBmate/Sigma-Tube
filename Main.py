@@ -8,13 +8,13 @@ col1, col2 = st.columns(2)
 
 with col1:
     if st.button("📊 Open Inventory Dashboard"):
-        st.experimental_set_query_params(page="dashboard")
+        st.query_params(page="dashboard")
         st.write("Redirecting to Dashboard...")
         st.experimental_rerun()
 
 with col2:
     if st.button("📦 Open Full Inventory Report"):
-        st.experimental_set_query_params(page="full_report")
+        st.query_params(page="full_report")
         st.write("Redirecting to Full Inventory Report...")
         st.experimental_rerun()
 
