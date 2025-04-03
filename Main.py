@@ -17,5 +17,10 @@ Dashboard_page = st.Page(
 pg = st.navigation(pages=[ROP_page,Dashboard_page])
 
 
+# --- SHARED ON ALL PAGES ---
+st.logo("assets/SigmaTube-Bar.jpeg",size="large")
+
+
+
 # --- Run Navigation ---
 pg.run()
