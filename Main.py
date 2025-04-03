@@ -1,20 +1,24 @@
 import streamlit as st
 
 # --- PAGE SETUP ---
-ROP_page = st.Page(
-    page="views/1_ROP.py",
-    title="ROP",
+
+Dashboard_page = st.Page(
+    page="views/1_Dashboard.py",
+    title="Dashboard",
     default=True,
 )
 
-Dashboard_page = st.Page(
-    page="views/2_Dashboard.py",
-    title="Dashboard",
+ROP_page = st.Page(
+    page="views/2_ROP.py",
+    title="ROP",
+
 )
+
+
 
 # --- Navigation Setup ---
 
-pg = st.navigation(pages=[ROP_page,Dashboard_page])
+pg = st.navigation(pages=[Dashboard_page,ROP_page])
 
 
 # --- SHARED ON ALL PAGES ---
