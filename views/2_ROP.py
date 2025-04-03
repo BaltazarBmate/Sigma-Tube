@@ -201,9 +201,20 @@ if st.button("📦 Show Summary Dashboard"):
         plt.ylabel('')
         plt.tight_layout()
         st.pyplot(plt)
-
+    
         st.write("📄 Full ROPData Table")
-        st.dataframe(df)
+
+        # Reorder the dataframe based on the Reorder Flag
+        reorder_priority = {"❌ Yes": 0, "⚠️ Caution": 1, "✅ No": 2}
+        df["Reorder Priority"] = df["Reorder Flag"].map(reorder_priority)
+        df = df.sort_values(by="Reorder Priority").drop(columns=["Reorder Priority"])
+
+        # Select and reorder the columns as specified
+        columns_to_display = ["Item", "Description", "OD", "ID", "Wall", "Usage/Week", "Weeks Left", "Reorder Flag"]
+        filtered_df = df[columns_to_display]
+
+        # Display the filtered and sorted dataframe
+        st.dataframe(filtered_df)
 
     except Exception as e:
         st.error(f"❌ Failed to load dashboard: {e}")
