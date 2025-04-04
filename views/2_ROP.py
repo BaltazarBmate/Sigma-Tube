@@ -201,20 +201,55 @@ if st.button("📦 Show Summary Dashboard"):
         plt.ylabel('')
         plt.tight_layout()
         st.pyplot(plt)
-    
-        st.write("📄 Full ROPData Table")
-
-        # Reorder the dataframe based on the Reorder Flag
-        reorder_priority = {"❌ Yes": 0, "⚠️ Caution": 1, "✅ No": 2}
-        df["Reorder Priority"] = df["Reorder Flag"].map(reorder_priority)
-        df = df.sort_values(by="Reorder Priority").drop(columns=["Reorder Priority"])
-
-        # Select and reorder the columns as specified
-        columns_to_display = ["Item", "Description", "OD", "ID", "Wall", "Usage/Week", "Weeks Left", "Reorder Flag"]
-        filtered_df = df[columns_to_display]
-
-        # Display the filtered and sorted dataframe
-        st.dataframe(filtered_df)
+  
 
     except Exception as e:
         st.error(f"❌ Failed to load dashboard: {e}")
+
+
+# Create a checklist for vendor selection
+try:
+        st.write("🔄 Fetching live data from ROPData...")
+
+        with engine.begin() as conn:
+            df = pd.read_sql("SELECT * FROM ROPData", conn)
+
+        df = df.rename(columns={
+            "OnHand": "In Stock (ft)",
+            "OnPO": "PO Incoming (ft)",
+            "#/ft": "Feet per Unit",
+            "con/wk": "Usage/Week",
+            "FastPathSort": "Grade"
+        })
+
+        df = df[df["Usage/Week"].notnull() & (df["Usage/Week"] != 0)]
+        df["Weeks Left"] = (df["In Stock (ft)"] / df["Usage/Week"]).round(1)
+
+        df["Reorder Flag"] = df["Weeks Left"].apply(
+            lambda w: "✅ No" if w > 26 else ("⚠️ Caution" if 12 < w <= 26 else "❌ Yes")
+        )
+
+        df["Origin"] = df["Description"].apply(lambda x: "China" if "++" in str(x) else "Other")
+except Exception as e:
+    st.error(f"❌ Failed to load dashboard: {e}")
+
+unique_vendors = sorted(df["Vndr"].unique())
+selected_vendors = st.multiselect("Select Vendors to Include", unique_vendors, default=unique_vendors)
+
+# Button to generate the filtered and ordered table
+if st.button("Run Filtered ROPData Report"):
+    # Filter the DataFrame based on selected vendors
+    filtered_df = df[df["Vndr"].isin(selected_vendors)]
+
+    # Reorder the dataframe based on the Reorder Flag
+    reorder_priority = {"❌ Yes": 0, "⚠️ Caution": 1, "✅ No": 2}
+    filtered_df["Reorder Priority"] = filtered_df["Reorder Flag"].map(reorder_priority)
+    filtered_df = filtered_df.sort_values(by="Reorder Priority").drop(columns=["Reorder Priority"])
+
+    # Select and reorder the columns as specified
+    columns_to_display = ["Item", "Description", "OD", "ID", "Wall", "Usage/Week", "Weeks Left", "Reorder Flag"]
+    filtered_df = filtered_df[columns_to_display]
+
+    # Display the filtered and sorted dataframe
+    st.write("📄 Filtered ROPData Table")
+    st.dataframe(filtered_df)
