@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import altair as alt
 from sqlalchemy import create_engine
+import re
 
 # Page title
 st.title("📦 Full Inventory Report")
@@ -251,3 +252,38 @@ if st.button("Run Filtered ROPData Report"):
     # Display the filtered and sorted dataframe
     st.write("📄 Filtered ROPData Table")
     st.dataframe(filtered_df)
+
+
+    # ---- Family Existence Calculation ----
+    def extract_family_items(comment):
+        """Extracts item numbers from the comment field."""
+        import re
+        matches = re.findall(r'!(\d+)', str(comment))
+        return [int(match) for match in matches]
+
+    # Filter to include only rows classified as "Yes" and "Caution"
+    critical_df = filtered_df[filtered_df["Reorder Flag"].isin(["❌ Yes", "⚠️ Caution"])].copy()
+
+    # Initialize the Family Existence column
+    critical_df["Family Existence"] = 0.0
+
+    for idx, row in critical_df.iterrows():
+        # Get the family items from the full df, not just filtered
+        family_items = extract_family_items(df.loc[df["Item"] == row["Item"], "comment"].values[0])
+        
+        # Start with the existence of the current item  
+        family_existence = df.loc[df["Item"] == row["Item"], "In Stock (ft)"].sum()
+
+        # Sum existence of all related family items from the full df
+        for family_item in family_items:
+            family_existence += df.loc[df["Item"] == family_item, "In Stock (ft)"].sum()
+
+        critical_df.at[idx, "Family Existence"] = family_existence
+
+    # Select and reorder the columns for the critical table
+    critical_columns = ["Item", "Description", "Usage/Week", "Weeks Left", "Reorder Flag", "Family Existence"]
+    critical_df = critical_df[critical_columns]
+
+    # Display the critical table with Family Existence
+    st.write("🚨 Critical Items with Family Existence")
+    st.dataframe(critical_df)
