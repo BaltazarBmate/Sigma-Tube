@@ -255,6 +255,8 @@ if st.button("Run Filtered ROPData Report"):
 
 
     # ---- Family Existence Calculation ----
+
+    st.write("📄 Family Items Table")
     def extract_family_items(comment):
         """Extracts item numbers from the comment field."""
         import re
@@ -279,6 +281,7 @@ if st.button("Run Filtered ROPData Report"):
             family_existence += df.loc[df["Item"] == family_item, "In Stock (ft)"].sum()
 
         critical_df.at[idx, "Family Existence"] = family_existence
+
 
     # Select and reorder the columns for the critical table
     critical_columns = ["Item", "Description", "Usage/Week", "Weeks Left", "Reorder Flag", "Family Existence"]
