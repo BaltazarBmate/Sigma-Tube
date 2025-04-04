@@ -202,42 +202,40 @@ if st.button("📦 Show Summary Dashboard"):
         plt.tight_layout()
         st.pyplot(plt)
   
-
     except Exception as e:
         st.error(f"❌ Failed to load dashboard: {e}")
 
 
-# Create a checklist for vendor selection
-try:
-        st.write("🔄 Fetching live data from ROPData...")
+### ---- Filter
+st.subheader("📦 ROP Summary")
+st.write("Select Vendors")
+with engine.begin() as conn:
+    df = pd.read_sql("SELECT * FROM ROPData", conn)
 
-        with engine.begin() as conn:
-            df = pd.read_sql("SELECT * FROM ROPData", conn)
+df = df.rename(columns={
+    "OnHand": "In Stock (ft)",
+    "OnPO": "PO Incoming (ft)",
+    "#/ft": "Feet per Unit",
+    "con/wk": "Usage/Week",
+    "FastPathSort": "Grade"
+})
 
-        df = df.rename(columns={
-            "OnHand": "In Stock (ft)",
-            "OnPO": "PO Incoming (ft)",
-            "#/ft": "Feet per Unit",
-            "con/wk": "Usage/Week",
-            "FastPathSort": "Grade"
-        })
+df = df[df["Usage/Week"].notnull() & (df["Usage/Week"] != 0)]
+df["Weeks Left"] = (df["In Stock (ft)"] / df["Usage/Week"]).round(1)
 
-        df = df[df["Usage/Week"].notnull() & (df["Usage/Week"] != 0)]
-        df["Weeks Left"] = (df["In Stock (ft)"] / df["Usage/Week"]).round(1)
+df["Reorder Flag"] = df["Weeks Left"].apply(
+    lambda w: "✅ No" if w > 26 else ("⚠️ Caution" if 12 < w <= 26 else "❌ Yes")
+)
 
-        df["Reorder Flag"] = df["Weeks Left"].apply(
-            lambda w: "✅ No" if w > 26 else ("⚠️ Caution" if 12 < w <= 26 else "❌ Yes")
-        )
+df["Origin"] = df["Description"].apply(lambda x: "China" if "++" in str(x) else "Other")
 
-        df["Origin"] = df["Description"].apply(lambda x: "China" if "++" in str(x) else "Other")
-except Exception as e:
-    st.error(f"❌ Failed to load dashboard: {e}")
 
 unique_vendors = sorted(df["Vndr"].unique())
 selected_vendors = st.multiselect("Select Vendors to Include", unique_vendors, default=unique_vendors)
 
 # Button to generate the filtered and ordered table
 if st.button("Run Filtered ROPData Report"):
+    
     # Filter the DataFrame based on selected vendors
     filtered_df = df[df["Vndr"].isin(selected_vendors)]
 
