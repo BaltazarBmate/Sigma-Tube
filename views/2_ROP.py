@@ -240,6 +240,9 @@ if st.button("Run Filtered ROPData Report"):
     # Filter the DataFrame based on selected vendors
     filtered_df = df[df["Vndr"].isin(selected_vendors)]
 
+  # ---- Store Critical Items (Yes and Caution) from the filtered dataframe ----
+    critical_items = filtered_df[filtered_df["Reorder Flag"].isin(["❌ Yes", "⚠️ Caution"])]["Item"].tolist()
+
     # Reorder the dataframe based on the Reorder Flag
     reorder_priority = {"❌ Yes": 0, "⚠️ Caution": 1, "✅ No": 2}
     filtered_df["Reorder Priority"] = filtered_df["Reorder Flag"].map(reorder_priority)
@@ -254,38 +257,58 @@ if st.button("Run Filtered ROPData Report"):
     st.dataframe(filtered_df)
 
 
-    # ---- Family Existence Calculation ----
-
+  # ---- Family Existence Calculation ----
     def extract_family_items(comment):
         """Extracts item numbers from the comment field."""
         import re
         matches = re.findall(r'!(\d+)', str(comment))
         return [int(match) for match in matches]
 
-    # Filter to include only rows classified as "Yes" and "Caution"
-    critical_df = filtered_df[filtered_df["Reorder Flag"].isin(["❌ Yes", "⚠️ Caution"])].copy()
-
-    # Initialize the Family Existence column
+    # Create a copy for further processing
+    critical_df = filtered_df.copy()
     critical_df["Family Existence"] = 0.0
+    critical_df["Family Breakdown"] = ""
 
     for idx, row in critical_df.iterrows():
         # Get the family items from the full df, not just filtered
         family_items = extract_family_items(df.loc[df["Item"] == row["Item"], "comment"].values[0])
         
-        # Start with the existence of the current item  
+        # Start with the existence of the current item
         family_existence = df.loc[df["Item"] == row["Item"], "In Stock (ft)"].sum()
 
-        # Sum existence of all related family items from the full df
+        # Initialize the family breakdown string with the current item
+        family_breakdown = f"{row['Item']} - {row['Description']} ({family_existence})"
+
+        # Sum existence of all related family items from the full df and build the breakdown string
         for family_item in family_items:
-            family_existence += df.loc[df["Item"] == family_item, "In Stock (ft)"].sum()
+            family_stock = df.loc[df["Item"] == family_item, "In Stock (ft)"].sum()
+            family_description = df.loc[df["Item"] == family_item, "Description"].values[0] if not df.loc[df["Item"] == family_item, "Description"].empty else "Unknown"
+            family_existence += family_stock
+            family_breakdown += f"\n{family_item} - {family_description} ({family_stock})"
 
         critical_df.at[idx, "Family Existence"] = family_existence
+        critical_df.at[idx, "Family Breakdown"] = family_breakdown
 
+    # ---- Recalculate Weeks Left with Family Existence Only ----
+    critical_df["Weeks Left"] = (critical_df["Family Existence"] / critical_df["Usage/Week"]).round(1)
 
-    # Select and reorder the columns for the critical table
-    critical_columns = ["Item", "Description", "Usage/Week", "Weeks Left", "Reorder Flag", "Family Existence"]
+    # ---- Update Reorder Flag based on new Weeks Left ----
+    critical_df["Reorder Flag"] = critical_df["Weeks Left"].apply(
+        lambda w: "✅ No" if w > 26 else ("⚠️ Caution" if 12 < w <= 26 else "❌ Yes")
+    )
+
+    # ---- Sort the DataFrame according to the Reorder Flag ----
+    reorder_priority = {"❌ Yes": 0, "⚠️ Caution": 1, "✅ No": 2}
+    critical_df["Reorder Priority"] = critical_df["Reorder Flag"].map(reorder_priority)
+    critical_df = critical_df.sort_values(by="Reorder Priority").drop(columns=["Reorder Priority"])
+
+    # ---- Filter the sorted critical_df to only include the originally identified critical items ----
+    critical_df = critical_df[critical_df["Item"].isin(critical_items)]
+
+    # Reorder columns to include the Family Breakdown field
+    critical_columns = ["Item", "Description", "Family Existence", "Family Breakdown", "Usage/Week", "Weeks Left", "Reorder Flag"]
     critical_df = critical_df[critical_columns]
 
-    # Display the critical table with Family Existence
-    st.write("🚨 Critical Items with Family Existence")
+    # Display the sorted and filtered critical table
+    st.write("🚨 Updated Critical Items (Sorted and Filtered with Family Breakdown)")
     st.dataframe(critical_df)
