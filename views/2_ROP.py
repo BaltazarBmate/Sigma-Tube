@@ -256,7 +256,6 @@ if st.button("Run Filtered ROPData Report"):
 
     # ---- Family Existence Calculation ----
 
-    st.write("📄 Family Items Table")
     def extract_family_items(comment):
         """Extracts item numbers from the comment field."""
         import re
