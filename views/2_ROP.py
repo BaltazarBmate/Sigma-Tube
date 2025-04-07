@@ -82,8 +82,8 @@ if st.button("Report by ITEM"):
         with engine.begin() as conn:
             for sql in full_report_query.strip().split(";"):
                 if sql.strip():
-                    result = pd.read_sql(sql, conn)
-                    result_sets.append(result)
+                    result_df = pd.read_sql(sql, conn)  # Changed variable name from 'df' to 'result_df'
+                    result_sets.append(result_df)
 
         st.success("✅ All data loaded successfully!")
 
@@ -95,10 +95,11 @@ if st.button("Report by ITEM"):
             "📅 Depletion Forecast",
         ]
 
-        for i, df in enumerate(result_sets):
+        for i, result_df in enumerate(result_sets):
             st.subheader(titles[i] if i < len(titles) else f"Result {i + 1}")
-            st.dataframe(df)
+            st.dataframe(result_df)
 
+        # Plot the Inventory Overview Chart if the data exists
         if len(result_sets) >= 3 and not result_sets[2].empty:
             inventory_df = result_sets[2]
             chart_data = pd.DataFrame({
@@ -207,7 +208,7 @@ if st.button("📦 Show Summary Dashboard"):
         st.error(f"❌ Failed to load dashboard: {e}")
 
 
-### ---- Filter
+### ---- Filter ------
 st.subheader("📦 ROP Summary")
 st.write("Select Vendors")
 with engine.begin() as conn:
