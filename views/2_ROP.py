@@ -18,7 +18,7 @@ item_id = st.text_input("Enter Item Number", value="50002")
 # ---------- Button 1: Report by ITEM ----------
 if st.button("Report by ITEM"):
     full_report_query = f"""
-        SELECT [Size Text], Description, SMO
+        SELECT [Size Text], Description, SMO, comment
         FROM ROPData
         WHERE Item = {item_id};
 
@@ -58,23 +58,6 @@ if st.button("Report by ITEM"):
         LEFT JOIN Aggregated a ON m.Month = a.Month
         GROUP BY m.Month
         ORDER BY m.Month;
-
-        SELECT [OnHand], [Rsrv], [OnHand] - [Rsrv] AS [Available Inv]
-        FROM ROPData
-        WHERE Item = {item_id};
-
-        SELECT 'Usage and Vendor' AS [Title], [#/ft], [UOM], [$/ft], [con/wk], [Vndr]
-        FROM ROPData
-        WHERE Item = {item_id};
-
-        SELECT 'When do we need to purchase and how much' AS [Question],
-            [OnHand] - [Rsrv] AS [Available Inv],
-            ([#/ft] * ([OnHand] - [Rsrv])) AS [Pounds],
-            [$/ft] * ([OnHand] - [Rsrv]) AS [Dollars],
-            ([OnHand] - [Rsrv]) / [con/wk] AS [Weeks],
-            DATEADD(WEEK, ([OnHand] - [Rsrv]) / [con/wk], CAST(GETDATE() AS DATE)) AS [Expected Depletion Date]
-        FROM ROPData
-        WHERE Item = {item_id};
     """
 
     try:
@@ -82,7 +65,7 @@ if st.button("Report by ITEM"):
         with engine.begin() as conn:
             for sql in full_report_query.strip().split(";"):
                 if sql.strip():
-                    result_df = pd.read_sql(sql, conn)  # Changed variable name from 'df' to 'result_df'
+                    result_df = pd.read_sql(sql, conn)
                     result_sets.append(result_df)
 
         st.success("✅ All data loaded successfully!")
@@ -99,26 +82,36 @@ if st.button("Report by ITEM"):
             st.subheader(titles[i] if i < len(titles) else f"Result {i + 1}")
             st.dataframe(result_df)
 
-        # Plot the Inventory Overview Chart if the data exists
-        if len(result_sets) >= 3 and not result_sets[2].empty:
-            inventory_df = result_sets[2]
-            chart_data = pd.DataFrame({
-                "Metric": ["OnHand", "Reserved", "Available"],
-                "Value": [
-                    float(inventory_df.at[0, "OnHand"]),
-                    float(-inventory_df.at[0, "Rsrv"]),
-                    float(inventory_df.at[0, "Available Inv"])
-                ]
-            })
+        # ---- Family Existence Table ----
+        def extract_family_items(comment):
+            """Extracts item numbers from the comment field."""
+            import re
+            matches = re.findall(r'!(\d+)', str(comment))
+            return [int(match) for match in matches]
 
-            st.subheader("📊 Inventory Overview Chart")
-            bar_chart = alt.Chart(chart_data).mark_bar().encode(
-                x=alt.X("Metric", title="Metric"),
-                y=alt.Y("Value", title="Feet", scale=alt.Scale(zero=True)),
-                color=alt.Color("Metric", legend=None)
-            ).properties(width=500, height=300)
+        # Load the full ROPData to get family-related items
+        with engine.begin() as conn:
+            full_df = pd.read_sql("SELECT Item, Description, OnHand, comment FROM ROPData", conn)
 
-            st.altair_chart(bar_chart)
+        # Rename columns after loading the data
+        full_df = full_df.rename(columns={
+            "OnHand": "In Stock (ft)"
+        })
+
+        # Extract the comment for the selected item from the full dataframe
+        selected_comment = full_df.loc[full_df["Item"] == int(item_id), "comment"].values[0] if not full_df.loc[full_df["Item"] == int(item_id), "comment"].empty else ""
+
+        # Extract family items from the comment field
+        family_items = extract_family_items(selected_comment)
+
+        # Filter the full dataframe to include only the family items
+        family_existence_df = full_df[full_df["Item"].isin(family_items)][["Item", "Description", "In Stock (ft)"]]
+
+        if not family_existence_df.empty:
+            st.subheader("📋 Family Existence Table")
+            st.dataframe(family_existence_df)
+        else:
+            st.warning("⚠️ No related family items found for this item.")
 
     except Exception as e:
         st.error(f"❌ Failed to run the report: {e}")
